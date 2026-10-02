@@ -300,7 +300,7 @@ if __name__ == "__main__":
     train_df = pd.read_parquet("math_data/train_level_3_5_no_test.parquet")
 
 
-    p = vLLMAutoregressiveSampler(model_name=model_str, model_type="base", device=device)
+    p = vLLMAutoregressiveSampler(model_name=model_str, model_type="chat", device=device)
 
     num_batches = args.num_batches
     all_idxs = [i for i in range(len(train_df))]
