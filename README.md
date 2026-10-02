@@ -38,12 +38,16 @@ The output is several .jsonl files (based on the shard number) that store the bo
 
 ## Training
 
-For SFT training, we refer to the setup in https://github.com/yongliang-wu/DFT. For chemistry and math, use ``` --learning_rate 5e-5``` and ``` --num_train_epochs 2```. A sample SFT launch script is provided for reference (in ``` utils/fsdp_utils.py``` in the DFT codebase, may need to modify the file to convert ``` fsdp_transformer_layer_cls_to_wrap``` to a list when the instance is a set for indexing).
+For SFT training, we refer to the setup in https://github.com/yongliang-wu/DFT. For chemistry and math, use ```--learning_rate 5e-5``` and ```--num_train_epochs 2```. A sample SFT launch script is provided for reference (in ```utils/fsdp_utils.py``` in the DFT codebase, may need to modify the file to convert ```fsdp_transformer_layer_cls_to_wrap``` to a list when the instance is a set for indexing).
 
 
 ## Evaluation
 
-To evaluate trained checkpoints, 
+To evaluate trained checkpoints on say chemistry, include your hf model checkpoints in the ```MODEL_PATHS``` of ```eval_sci.sh```. Depending on the number of checkpoints, run 
+```bash
+sbatch --array=0-N eval_sci.sh
+```
+The output .jsonl grading file stores correctness per evaluation task and can be directly parsed to obtain final accuracy. Similar commands for ```eval_math.sh``` and ```eval_ood_math.sh``` hold. For MMLU and GPQA, we refer to lm-evaluation-harness (https://github.com/eleutherai/lm-evaluation-harness).
 
 
 
