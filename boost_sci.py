@@ -339,8 +339,8 @@ if __name__ == "__main__":
             has_boxed = "boxed" in boosted_rollout
 
         else:
-            answer = extract_unbalanced_from_question(boosted_rollout)
-            out = balance_grader(boosted_rollout, train_set[i]["answer"])
+            out = same_balanced_equation_olmo(boosted_rollout, train_set[i]["answer"])
+            answer = out["equation_1"]
             is_correct = out["same"]
 
 
