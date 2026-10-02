@@ -16,11 +16,11 @@ export HF_HUB_CACHE="$HF_HOME/hub"
 export HF_DATASETS_CACHE="$HF_HOME/datasets"
 export TRANSFORMERS_CACHE="$HF_HOME/models"
 
-export PYTHONPATH="$PYTHONPATH:{/path/to/finetuning-with-sampling/llm_experiments}"
+export PYTHONPATH="$PYTHONPATH:{/path/to/finetuning-with-sampling}"
 export HF_TOKEN={HF_TOKEN}
 
 source activate mcmc
-cd /path/to/finetuning-with-sampling/llm_experiments
+cd /path/to/finetuning-with-sampling
 
 echo "Running shard BATCH_IDX=${BATCH_IDX}"
 
