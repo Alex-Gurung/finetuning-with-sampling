@@ -38,7 +38,7 @@ The output is several .jsonl files (based on the shard number) that store the bo
 
 ## Training
 
-For SFT training, we refer to the setup in https://github.com/yongliang-wu/DFT. For chemistry and math, use ```bash --learning_rate 5e-5``` and ```bash --num_train_epochs 2```. A sample SFT launch script is provided for reference (in ```bash utils/fsdp_utils.py``` in the DFT codebase, may need to modify the file to convert ```bash fsdp_transformer_layer_cls_to_wrap``` to a list when the instance is a set for indexing).
+For SFT training, we refer to the setup in https://github.com/yongliang-wu/DFT. For chemistry and math, use ``` --learning_rate 5e-5``` and ``` --num_train_epochs 2```. A sample SFT launch script is provided for reference (in ``` utils/fsdp_utils.py``` in the DFT codebase, may need to modify the file to convert ``` fsdp_transformer_layer_cls_to_wrap``` to a list when the instance is a set for indexing).
 
 
 ## Evaluation
