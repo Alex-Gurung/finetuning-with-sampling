@@ -29,7 +29,7 @@ from constants import *
 
 import re
 
-from utils import parse_answer_gpqa, grade_answer, same_balanced_equation, same_balanced_equation_olmo
+from grader_utils.sci_grader import parse_answer_gpqa, grade_answer, same_balanced_equation, same_balanced_equation_olmo
 
 def format_prompt(text, model_type, tokenizer):
     if model_type == "base":
