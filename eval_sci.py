@@ -1,4 +1,5 @@
 import os, json, time
+os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
 
 from tqdm import tqdm
 import argparse
