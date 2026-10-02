@@ -24,8 +24,6 @@ from vllm import LLM, SamplingParams
 from transformers import AutoTokenizer
 from vllm.inputs import TokensPrompt
 
-from utils import regex_match_tool_call
-
 
 from constants import *
 
