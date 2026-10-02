@@ -100,27 +100,27 @@ if __name__ == "__main__":
     os.makedirs(save_str, exist_ok=True)
     out_path = os.path.join(save_str, f"eval_{out_name}_{args.batch_idx}.jsonl")
 
-    train_df = pd.read_parquet("math_data/test.parquet")
+    test_df = pd.read_parquet("math_data/test.parquet")
 
 
     p = vLLMAutoregressiveSampler(model_name=model_str, model_type="chat")
 
     num_batches = 1
-    all_idxs = [i for i in range(len(train_df))]
+    all_idxs = [i for i in range(len(test_df))]
     chunk_size = (len(all_idxs) + num_batches - 1) // num_batches  # ceiling division
     start = args.batch_idx * chunk_size
     end = min(start + chunk_size, len(all_idxs))
     batch_idxs = all_idxs[start:end]
 
     for i in tqdm(batch_idxs):
-        s = train_df["question"][i]
+        s = test_df["question"][i]
         start = s.index("\nUser: ") + len("\nUser: ")
         end = s.rfind("Show your work")
         base_q = s[start:end]
 
 
         question = MATH_PROMPT + base_q + MATH_COT
-        solution = train_df["answer"][i]
+        solution = test_df["answer"][i]
 
 
         t0 = time.time()
