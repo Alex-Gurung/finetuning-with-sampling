@@ -29,8 +29,8 @@ from constants import *
 
 import re
 
-from math_parse_utils import parse_answer
-from math_grader import grade_answer
+from grader_utils.math_parse_utils import parse_answer
+from grader_utils.math_grader import grade_answer
 
 def format_prompt(text, model_type, tokenizer):
     if model_type == "base":
