@@ -80,7 +80,7 @@ def load_ood_dataset(dataset_name):
 
     'solution' is wrapped in <answer>...</answer> tags so parse_answer_from_tag works uniformly.
     """
-    base = "outside_eval"
+    base = "ood_data"
     if dataset_name == "AMC":
         with open(os.path.join(base, "AMC.json")) as f:
             data = json.load(f)
