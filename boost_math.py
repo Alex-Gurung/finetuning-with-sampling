@@ -297,8 +297,8 @@ if __name__ == "__main__":
 
     save_str = os.path.join(args.save_str, model)
     os.makedirs(save_str, exist_ok=True)
-    out_path = os.path.join(save_str, "rewrite_" + str(args.batch_idx)+ ".jsonl")
-    trace_out_path = os.path.join(save_str, "trace_rewrite_" + str(args.batch_idx)+ ".jsonl")
+    out_path = os.path.join(save_str, "boosted_" + str(args.batch_idx)+ ".jsonl")
+    trace_out_path = os.path.join(save_str, "trace_boosted_" + str(args.batch_idx)+ ".jsonl")
 
 
     if model == "qwen":
