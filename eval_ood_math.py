@@ -112,7 +112,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_batches", action = "store", type = int, default = 1)
     parser.add_argument("--seed", action = "store", type = int, default = 0)
     parser.add_argument("--dataset", action = "store", type = str, required=True, choices=["AMC", "GSM8K", "MATH-TTT"],
-                        help="OOD evaluation dataset from outside_eval/")
+                        help="OOD evaluation dataset from ood_data/")
     args = parser.parse_args()
 
     model_str = args.model_str
