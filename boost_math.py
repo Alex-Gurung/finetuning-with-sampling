@@ -297,7 +297,7 @@ if __name__ == "__main__":
     if model == "qwen":
         model_str = "Qwen/Qwen2.5-3B"
 
-    train_df = pd.read_parquet("math_data/train_level_3_5_no_test.parquet")
+    train_df = pd.read_parquet("math_data/train.parquet")
 
 
     p = vLLMAutoregressiveSampler(model_name=model_str, model_type="chat", device=device)
