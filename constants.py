@@ -57,12 +57,3 @@ Starting with the partial response, continue the response in your own words, inc
 """
 
 
-def format_prompt(text, model_type, tokenizer):
-    if model_type == "base":
-        format_str = text
-    elif model_type == "chat":
-        answer_context = [{"role": "user", "content": text}]
-        format_str = tokenizer.apply_chat_template(answer_context, tokenize=False, add_generation_prompt=True)
-    return format_str
-
-
