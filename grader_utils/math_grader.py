@@ -1,4 +1,3 @@
-
 """
 Answer checker API that uses sympy to simplify expressions and check for equality.
 
