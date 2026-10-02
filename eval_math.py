@@ -105,7 +105,7 @@ if __name__ == "__main__":
 
     p = vLLMAutoregressiveSampler(model_name=model_str, model_type="chat")
 
-    num_batches = 1
+    num_batches = args.num_batches
     all_idxs = [i for i in range(len(test_df))]
     chunk_size = (len(all_idxs) + num_batches - 1) // num_batches  # ceiling division
     start = args.batch_idx * chunk_size
