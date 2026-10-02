@@ -8,7 +8,7 @@
 
 This repo contains the official PyTorch implementation of Finetuning with Sampling.
 > [**Finetuning with Sampling: SFT Learns Better Than You Think**](https://arxiv.org/abs/2610.02140)<br>
-> [Aayush Karan](https://aakaran.github.io/), [Sitan Chen] https://sitanchen.com/), [Yilun Du](https://yilundu.github.io/)
+> [Aayush Karan](https://aakaran.github.io/), [Sitan Chen](https://sitanchen.com/) [Yilun Du](https://yilundu.github.io/)
 > <br>Harvard<br>
 
 
