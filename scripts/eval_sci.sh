@@ -3,7 +3,7 @@
 #SBATCH -t 0-23:59                 # Runtime in D-HH:MM
 #SBATCH --mem=200000               # Memory pool for all cores (MB)
 #SBATCH --gres=gpu:nvidia_h100_80gb_hbm3:1
-#SBATCH --array=0                  # One task per model path in MODEL_PATHS below: 0-(N-1) for N paths
+#SBATCH --array=0                  
 
 
 module load python/3.12.8-fasrc01
