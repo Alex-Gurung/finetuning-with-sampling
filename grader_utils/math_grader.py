@@ -9,8 +9,7 @@ import sympy
 from pylatexenc import latex2text
 from sympy.parsing import sympy_parser
 
-import math_normalize as math_normalize
-
+import grader_utils.math_normalize as math_normalize
 
 # sympy might hang -- we don't care about trying to be lenient in these cases
 BAD_SUBSTRINGS = ["^{", "^("]
