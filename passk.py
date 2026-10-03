@@ -1,6 +1,6 @@
 """pass@k on the chemistry test set (the paper's Figure 4), or with --task math on the MATH test set of
-eval_math.py. Draws n samples per problem with the eval's settings (chat template, temperature 0.6, 1,856 tokens,
-stop at EOS) and grades them with the eval's graders. Writes the number of correct samples per problem, from which
+eval_math.py; with --val_file, on held-out training problems instead. Draws n samples per problem with the eval's
+settings (chat template, temperature 0.6, 1,856 tokens, stop at EOS) and grades them with the eval's graders. Writes the number of correct samples per problem, from which
 pass@k follows by the unbiased estimator 1 - C(n - c, k) / C(n, k).
 
     python passk.py --model allenai/Olmo-3-7B-Instruct --n 64 --shard 0 --num_shards 8 --out passk/olmo_0.jsonl
@@ -14,6 +14,7 @@ from vllm import LLM, SamplingParams
 
 from eval_math import MATH_COT, MATH_PROMPT, safe_grade
 from grader_utils.math_parse_utils import parse_answer, parse_answer_from_tag
+from groot import TASKS as TRAIN_TASKS
 from groot import chem_correct, chem_question
 
 
@@ -33,6 +34,14 @@ def math_problems() -> list[tuple[str, str]]:
     return problems
 
 
+def val_problems(task: str, path: str) -> tuple[list[tuple[str, dict]], list[int]]:
+    """Training problems held out for validation (their indices, a JSON list in PATH), asked as groot.py asks them."""
+    load, question = TRAIN_TASKS[task][:2]
+    rows = load()
+    idx = json.loads(open(path).read())
+    return [(question(rows[i]), rows[i]) for i in idx], idx
+
+
 TASKS = {
     "chem": (chem_problems, chem_correct),
     "math": (math_problems, lambda answer, text: bool(safe_grade(parse_answer(text), parse_answer_from_tag(answer)))),
@@ -47,10 +56,14 @@ def main() -> None:
     parser.add_argument("--shard", type=int, default=0)
     parser.add_argument("--num_shards", type=int, default=1)
     parser.add_argument("--out", required=True)
+    parser.add_argument("--val_file", help="score held-out training problems (a JSON list of indices) instead of the test set")
     args = parser.parse_args()
 
     load, correct = TASKS[args.task]
-    problems = load()
+    problems, ids = load(), None
+    if args.val_file:
+        problems, ids = val_problems(args.task, args.val_file)
+        correct = TRAIN_TASKS[args.task][2]
     size = (len(problems) + args.num_shards - 1) // args.num_shards
     indices = range(args.shard * size, min((args.shard + 1) * size, len(problems)))
 
@@ -67,7 +80,7 @@ def main() -> None:
     with open(args.out, "w") as out:
         for i, output in zip(indices, outputs, strict=True):
             hits = sum(correct(problems[i][1], sample.text) for sample in output.outputs)
-            out.write(json.dumps({"idx": i, "n": args.n, "correct": hits}) + "\n")
+            out.write(json.dumps({"idx": i if ids is None else ids[i], "n": args.n, "correct": hits}) + "\n")
 
 
 if __name__ == "__main__":
