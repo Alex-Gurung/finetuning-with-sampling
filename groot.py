@@ -1,5 +1,5 @@
-"""Samples chemistry training solutions with Groot or IID from a vLLM server, grades them, and
-writes the correct ones as SFT data.
+"""Samples training solutions with Groot or IID from a vLLM server, grades them, and writes the
+correct ones as SFT data, for the chemistry or the math task.
 
 Groot asks the model for a decision tree of approaches and n paths through it, then solves the
 problem once per path with the path as a hidden hint. IID solves the problem n times. Samples are
@@ -7,7 +7,7 @@ graded with the repo's graders; correct, finished samples that do not mention th
 the SFT set (prompt and response columns, as train_sft.py and the verl SFT trainer expect).
 
     vllm serve Qwen/Qwen2.5-7B-Instruct --generation-config vllm --data-parallel-size 8
-    python groot_sci.py --model Qwen/Qwen2.5-7B-Instruct --method groot --out groot_qwen
+    python groot.py --task chem --model Qwen/Qwen2.5-7B-Instruct --method groot --out groot_qwen
 
 Without --generation-config vllm, the server fills in the sampling parameters a request leaves out
 from the model's generation_config.json (for Qwen2.5, top_k 20 and repetition penalty 1.05).
@@ -23,6 +23,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from eval_math import MATH_COT, MATH_PROMPT, safe_grade
 from eval_sci import (
     BALANCE_COT,
     BALANCE_PROMPT,
@@ -30,6 +31,7 @@ from eval_sci import (
     MCQ_PROMPT,
     extract_unbalanced_from_question,
 )
+from grader_utils.math_parse_utils import parse_answer
 from grader_utils.sci_grader import grade_answer, parse_answer_gpqa, same_balanced_equation_olmo
 
 PROMPT_DIR = Path(__file__).parent / "groot_prompts"
@@ -62,7 +64,11 @@ LEAK_TERMS = [
 ]
 
 
-def question(row: dict) -> str:
+def chem_rows() -> list[dict]:
+    return [json.loads(line) for line in Path("sci_data/train_data.jsonl").read_text().splitlines()]
+
+
+def chem_question(row: dict) -> str:
     """The question exactly as eval_sci.py and boost_sci.py build it."""
     if row["type"].startswith("mcq"):
         choices = zip(row["choices"]["label"], row["choices"]["text"], strict=True)
@@ -71,10 +77,30 @@ def question(row: dict) -> str:
     return BALANCE_PROMPT + extract_unbalanced_from_question(row["question"]) + BALANCE_COT
 
 
-def is_correct(row: dict, response: str) -> bool:
+def chem_correct(row: dict, response: str) -> bool:
     if row["type"].startswith("mcq"):
         return bool(grade_answer(parse_answer_gpqa(response), row["answerKey"]))
     return bool(same_balanced_equation_olmo(response, row["answer"])["same"])
+
+
+def math_rows() -> list[dict]:
+    return pd.read_parquet("math_data/train.parquet").to_dict("records")
+
+
+def math_question(row: dict) -> str:
+    """The question exactly as eval_math.py and boost_math.py build it."""
+    return MATH_PROMPT + row["problem"] + MATH_COT
+
+
+def math_correct(row: dict, response: str) -> bool:
+    return bool(safe_grade(parse_answer(response), parse_answer(row["solution"])))
+
+
+# task -> (load training rows, build the question, grade a response, label a row's problem type)
+TASKS = {
+    "chem": (chem_rows, chem_question, chem_correct, lambda row: row["details"]["task"]),
+    "math": (math_rows, math_question, math_correct, lambda row: f"{row['type']} / {row['level']}"),
+}
 
 
 def render(template: str, **fields: str) -> str:
@@ -109,11 +135,12 @@ async def sample_problem(
         async with limit:
             return await asyncio.to_thread(chat, args, message, temperature, max_tokens)
 
+    _, question, correct, kind = TASKS[args.task]
     prompt = question(row)
     plan, approaches = None, [None] * args.n
     if args.method == "groot":
         planner = render(
-            "planner",
+            f"{args.task}_planner",
             PROBLEM=prompt,
             N=str(args.n),
             N_WORD=NUMBER_WORDS[args.n],
@@ -124,7 +151,7 @@ async def sample_problem(
     solutions = await asyncio.gather(
         *(
             ask(
-                prompt if a is None else render("solver", PROBLEM=prompt, APPROACH=a),
+                prompt if a is None else render(f"{args.task}_solver", PROBLEM=prompt, APPROACH=a),
                 SOLVER_TEMPERATURE,
                 SOLVER_MAX_TOKENS,
             )
@@ -135,13 +162,13 @@ async def sample_problem(
         {
             "idx": index,
             "method": args.method,
-            "task": row["details"]["task"],
+            "task": kind(row),
             "approach": approach,
             "plan": plan,
             "prompt": prompt,
             "response": response,
             "finish_reason": finish_reason,
-            "correct": is_correct(row, response),
+            "correct": correct(row, response),
             "leaked": approach is not None and any(t in response.lower() for t in LEAK_TERMS),
         }
         for approach, (response, finish_reason) in zip(approaches, solutions, strict=True)
@@ -149,7 +176,7 @@ async def sample_problem(
 
 
 async def run(args: argparse.Namespace) -> None:
-    rows = [json.loads(line) for line in Path(args.data).read_text().splitlines()]
+    rows = TASKS[args.task][0]()
     args.out.mkdir(parents=True, exist_ok=True)
     samples_path = args.out / "samples.jsonl"
     done = set()
@@ -185,10 +212,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
+    parser.add_argument("--task", choices=list(TASKS), required=True)
     parser.add_argument("--model", required=True, help="the model the vLLM server serves")
     parser.add_argument("--method", choices=["groot", "iid"], default="groot")
     parser.add_argument("--n", type=int, default=4, help="samples per problem")
-    parser.add_argument("--data", default="sci_data/train_data.jsonl")
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--url", default="http://localhost:8000/v1", help="the vLLM server")
     parser.add_argument("--workers", type=int, default=1024, help="requests in flight")

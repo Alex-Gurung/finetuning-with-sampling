@@ -276,7 +276,7 @@ def safe_grade(ans, correct_ans):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--save_str", action = "store", type = str, default = "math_boost/",  dest = "save_str")
-    parser.add_argument("--model", action = "store", default = "qwen", type = str, choices = ["qwen"])
+    parser.add_argument("--model", action = "store", default = "qwen", type = str, choices = ["qwen", "qwen3-4b"])
     parser.add_argument("--device", action = "store", type = str, dest = "device", default = "cuda" if torch.cuda.is_available() else 'cpu')
     parser.add_argument("--batch_idx", action = "store", type = int, default = 0)
     parser.add_argument("--num_batches", action = "store", type = int, default = 15)
@@ -303,6 +303,8 @@ if __name__ == "__main__":
 
     if model == "qwen":
         model_str = "Qwen/Qwen2.5-3B"
+    elif model == "qwen3-4b":
+        model_str = "Qwen/Qwen3-4B-Base"
 
     train_df = pd.read_parquet("math_data/train.parquet")
 

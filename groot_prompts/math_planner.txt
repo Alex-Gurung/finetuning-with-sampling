@@ -1,0 +1,42 @@
+You will be given a math problem.
+
+PROBLEM:
+{PROBLEM}
+
+First, write out a decision tree for solving this problem inside <tree></tree> tags. Here is an example of the expected shape, written for a different, unrelated problem (find the remainder when 2^100 is divided by 7) - use the format but not the content of this example:
+
+A. Cycle of powers of 2 modulo 7
+   A1. Reduce the exponent
+       A1a. Use the cycle length 3 directly
+       A1b. Split 100 as 99 + 1 first
+B. Fermat's little theorem
+   B1. Reduce the exponent modulo 6
+       B1a. Write 2^100 as (2^6)^16 times 2^4
+       B1b. Combine with the shorter cycle of length 3
+C. Binomial expansion around a multiple of 7
+   C1. Choose the base
+       C1a. Write 2^3 = 7 + 1 and expand (7 + 1)^33
+       C1b. Write 2^6 = 63 + 1 and expand (63 + 1)^16
+D. Repeated squaring modulo 7
+   D1. Order of reductions
+       D1a. Square up to 2^64 and multiply the needed powers
+       D1b. Build up through 2^10 and 2^20 first
+
+The top-level entries of this tree should be fundamentally different strategies that seem like reasonable high-level approaches to solve this problem. Keep the tree high-level and compact, only briefly describing key decisions that meaningfully change results and are also reasonable alternatives. Obvious choices with no alternatives can be skipped over to keep the trees concise. Every root-to-leaf path should read as a coherent, distinct solution plan.
+
+Then pick the {N} root-to-leaf paths through the tree that best combine coverage of different strategies with likelihood of success. The {N} paths do not need to share any part of the tree - {N_WORD} approaches from {N_WORD} entirely different subtrees, with no overlap at all, are valid and often ideal. Immediately before each <approach> block, on its own line outside the tags, write the path it takes in the style "Path: B -> B1a". Inside the tags give the full approach summary itself: name the strategy and its one decisive insight; if the path relies on a formula or rule, check it briefly and state only its conclusion, do not write out step-by-step computations; and otherwise leave the detailed working to the solver. Do not state the final answer or which option is correct. Fully self-contained prose that does not mention the tree, the labels, or the other approaches.
+
+Format your entire response exactly as:
+
+<tree>
+(the tree)
+</tree>
+
+Path: ...
+<approach>
+(the approach summary)
+</approach>
+
+({N_MINUS_1_WORD} more <approach> blocks, {N} in total - no other text before, between, or after)
+
+Do all of your thinking inside the tree and the approach blocks - if you are unsure, commit to your best guess rather than reasoning outside them.

@@ -5,6 +5,8 @@ each SFT run over epochs {1, 2}, lr {5e-5, 1e-5, 5e-6} and batch {16, 32, 64}. F
 2048, cosine schedule, gradient clipping at 1.0, and bf16 weights as in the paper's verl run
 (model_dtype=bf16). The rest follows verl's SFT defaults: AdamW betas 0.9/0.95, weight decay 0.01,
 10% warmup. Plain data parallel, one model copy per GPU; the loss covers the response tokens only.
+Examples are formatted as verl formats them: the chat-templated prompt, then the response followed by
+the tokenizer's EOS token (TRL appends it), so a fine-tuned base model stops where the eval expects.
 
     torchrun --nproc_per_node 8 train_sft.py --data groot_qwen/sft.parquet \
         --model Qwen/Qwen2.5-7B-Instruct --out checkpoints/groot_qwen
@@ -16,6 +18,7 @@ import os
 import pandas as pd
 import torch
 from datasets import Dataset
+from transformers import AutoTokenizer
 from trl import SFTConfig, SFTTrainer
 
 
@@ -32,15 +35,14 @@ def main() -> None:
     args = parser.parse_args()
 
     rows = pd.read_parquet(args.data)
-    dataset = Dataset.from_list(
-        [
-            {
-                "prompt": [{"role": "user", "content": prompt}],
-                "completion": [{"role": "assistant", "content": response}],
-            }
-            for prompt, response in zip(rows["prompt"], rows["response"], strict=True)
-        ]
-    )
+    tokenizer = AutoTokenizer.from_pretrained(args.model)
+    prompts = [
+        tokenizer.apply_chat_template(
+            [{"role": "user", "content": prompt}], tokenize=False, add_generation_prompt=True
+        )
+        for prompt in rows["prompt"]
+    ]
+    dataset = Dataset.from_dict({"prompt": prompts, "completion": list(rows["response"])})
     config = SFTConfig(
         output_dir=args.out,
         model_init_kwargs={"dtype": torch.bfloat16},
@@ -58,7 +60,9 @@ def main() -> None:
         save_strategy="no",
         report_to="none",
     )
-    trainer = SFTTrainer(model=args.model, args=config, train_dataset=dataset)
+    trainer = SFTTrainer(
+        model=args.model, args=config, train_dataset=dataset, processing_class=tokenizer
+    )
     trainer.train()
     # Olmo-3-7B-Instruct-SFT ships temperature and top_p without do_sample, which saving rejects.
     trainer.model.generation_config.do_sample = True
