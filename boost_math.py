@@ -286,6 +286,8 @@ if __name__ == "__main__":
 
     parser.add_argument("--seed", action = "store", type = int, default = 0)
     parser.add_argument("--resume", action = "store_true", default = False)
+    parser.add_argument("--idx_file", action = "store", type = str, default = None,
+                        help = "process the training indices listed in this file instead of shard batch_idx")
     parser.add_argument("--gpu_memory_utilization", action = "store", type = float, default = 0.9,
                         help = "lower it to run several shards on one GPU")
     parser.add_argument("--max_model_len", action = "store", type = int, default = None,
@@ -302,8 +304,9 @@ if __name__ == "__main__":
 
     save_str = os.path.join(args.save_str, model)
     os.makedirs(save_str, exist_ok=True)
-    out_path = os.path.join(save_str, "boosted_" + str(args.batch_idx)+ ".jsonl")
-    trace_out_path = os.path.join(save_str, "trace_boosted_" + str(args.batch_idx)+ ".jsonl")
+    shard_name = os.path.splitext(os.path.basename(args.idx_file))[0] if args.idx_file else str(args.batch_idx)
+    out_path = os.path.join(save_str, "boosted_" + shard_name + ".jsonl")
+    trace_out_path = os.path.join(save_str, "trace_boosted_" + shard_name + ".jsonl")
 
 
     if model == "qwen":
@@ -323,6 +326,9 @@ if __name__ == "__main__":
     start = args.batch_idx * chunk_size
     end = min(start + chunk_size, len(all_idxs))
     batch_idxs = all_idxs[start:end]
+    if args.idx_file:
+        with open(args.idx_file) as f:
+            batch_idxs = [int(line) for line in f if line.strip()]
 
     if args.resume and os.path.exists(out_path):
         written = set()
