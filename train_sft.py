@@ -13,7 +13,9 @@ the tokenizer's EOS token (TRL appends it), so a fine-tuned base model stops whe
 """
 
 import argparse
+import json
 import os
+from pathlib import Path
 
 import pandas as pd
 import torch
@@ -35,6 +37,8 @@ def main() -> None:
                         help="sequences per GPU per forward pass; gradient accumulation makes up the global batch")
     parser.add_argument("--no_checkpointing", action="store_true",
                         help="keep activations instead of recomputing them in the backward pass (faster, more memory)")
+    parser.add_argument("--liger", action="store_true",
+                        help="Liger kernels: fused RMSNorm, RoPE, SwiGLU and linear + cross-entropy (same loss, less memory)")
     parser.add_argument("--max_steps", type=int, default=-1,
                         help="stop after this many optimizer steps without saving (timing runs; the schedule follows it)")
     args = parser.parse_args()
@@ -62,6 +66,7 @@ def main() -> None:
         gradient_checkpointing=not args.no_checkpointing,
         gradient_checkpointing_kwargs={"use_reentrant": False},
         max_steps=args.max_steps,
+        use_liger_kernel=args.liger,
         save_strategy="no",
         report_to="none",
         seed=args.seed,
@@ -70,6 +75,9 @@ def main() -> None:
     trainer.train()
     if args.max_steps > 0:
         return
+    if trainer.is_world_process_zero():
+        Path(args.out).mkdir(parents=True, exist_ok=True)
+        (Path(args.out) / "train_args.json").write_text(json.dumps(vars(args) | {"world_size": int(os.environ.get("WORLD_SIZE", "1"))}))
     # Olmo-3-7B-Instruct-SFT ships temperature and top_p without do_sample, which saving rejects.
     trainer.model.generation_config.do_sample = True
     trainer.save_model(args.out)
