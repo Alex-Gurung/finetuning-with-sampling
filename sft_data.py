@@ -1,7 +1,7 @@
-"""Writes the SFT parquet (prompt and response columns) for a math baseline.
+"""Writes the SFT parquet (prompt and response columns) for a baseline.
 
-    python sft_data.py expert OUT.parquet             the training set's expert solutions
-    python sft_data.py boosted BOOST_DIR OUT.parquet  the traces boost_math.py wrote, one per problem
+    python sft_data.py expert OUT.parquet             the math training set's expert solutions
+    python sft_data.py boosted BOOST_DIR OUT.parquet  the traces boost_math.py or boost_sci.py wrote, one per problem
 
 Boosted traces are kept whether or not they reach the right answer, as in the README's recipe.
 """

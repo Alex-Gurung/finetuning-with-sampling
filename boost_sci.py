@@ -41,8 +41,9 @@ def format_prompt(text, model_type, tokenizer):
     return format_str
 
 class vLLMAutoregressiveSampler:
-    def __init__(self, model_name, model_type, device="cuda"):
-        self.llm = LLM(model=model_name, trust_remote_code=True, gpu_memory_utilization=0.9)
+    def __init__(self, model_name, model_type, device="cuda", gpu_memory_utilization=0.9, max_model_len=None):
+        self.llm = LLM(model=model_name, trust_remote_code=True, gpu_memory_utilization=gpu_memory_utilization,
+                       max_model_len=max_model_len)
         self.tokenizer = self.llm.get_tokenizer()
         self.model_type = model_type
         self.device = device
@@ -270,13 +271,18 @@ def extract_unbalanced_from_question(q: str) -> Optional[str]:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--save_str", action = "store", type = str, default = "sci_boost/",  dest = "save_str")
-    parser.add_argument("--model", action = "store", default = "qwen", type = str, choices = ["qwen", "olmo"])
+    parser.add_argument("--model", action = "store", default = "qwen", type = str, choices = ["qwen", "olmo", "olmo-instruct"])
     parser.add_argument("--device", action = "store", type = str, dest = "device", default = "cuda" if torch.cuda.is_available() else 'cpu')
     parser.add_argument("--batch_idx", action = "store", type = int, default = 0)
     parser.add_argument("--num_batches", action = "store", type = int, default = 15)
     parser.add_argument("--mcmc_steps", action = "store", type = int, default = 10)
     parser.add_argument("--block_num", action = "store", type = int, default = 58)
     parser.add_argument("--seed", action = "store", type = int, default = 0)
+    parser.add_argument("--resume", action = "store_true", default = False)
+    parser.add_argument("--gpu_memory_utilization", action = "store", type = float, default = 0.9,
+                        help = "lower it to run several shards on one GPU")
+    parser.add_argument("--max_model_len", action = "store", type = int, default = None,
+                        help = "cap the context, which a small memory share needs for long-context models")
     args = parser.parse_args()
 
 
@@ -297,13 +303,16 @@ if __name__ == "__main__":
         model_str = "Qwen/Qwen2.5-7B-Instruct"
     if model =="olmo":
         model_str = "allenai/Olmo-3-7B-Instruct-SFT"
+    if model == "olmo-instruct":
+        model_str = "allenai/Olmo-3-7B-Instruct"
 
-    balance_grader = same_balanced_equation_olmo if model == "olmo" else same_balanced_equation
+    balance_grader = same_balanced_equation_olmo if model.startswith("olmo") else same_balanced_equation
 
     with open("sci_data/train_data.jsonl", "r", encoding="utf-8") as f:
         train_set = [json.loads(line) for line in f if line.strip()]
 
-    p = vLLMAutoregressiveSampler(model_name=model_str, model_type="chat", device=device)
+    p = vLLMAutoregressiveSampler(model_name=model_str, model_type="chat", device=device,
+                                  gpu_memory_utilization=args.gpu_memory_utilization, max_model_len=args.max_model_len)
 
     num_batches = args.num_batches
     all_idxs = [i for i in range(len(train_set))]
@@ -311,6 +320,12 @@ if __name__ == "__main__":
     start = args.batch_idx * chunk_size
     end = min(start + chunk_size, len(all_idxs))
     batch_idxs = all_idxs[start:end]
+
+    if args.resume and os.path.exists(out_path):
+        with open(out_path) as f:
+            written = {json.loads(line)["idx"] for line in f}
+        batch_idxs = [i for i in batch_idxs if i not in written]
+        print(f"Resuming: {len(batch_idxs)} indices remaining")
 
     for i in tqdm(batch_idxs):
         type_q = train_set[i]["type"]
