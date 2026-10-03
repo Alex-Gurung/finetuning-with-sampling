@@ -42,8 +42,8 @@ def format_prompt(text, model_type, tokenizer):
     return format_str
 
 class vLLMAutoregressiveSampler:
-    def __init__(self, model_name, model_type, device="cuda"):
-        self.llm = LLM(model=model_name, trust_remote_code=True, gpu_memory_utilization=0.9)
+    def __init__(self, model_name, model_type, device="cuda", gpu_memory_utilization=0.9):
+        self.llm = LLM(model=model_name, trust_remote_code=True, gpu_memory_utilization=gpu_memory_utilization)
         self.tokenizer = self.llm.get_tokenizer()
         self.model_type = model_type
         self.device = device
@@ -285,6 +285,8 @@ if __name__ == "__main__":
 
     parser.add_argument("--seed", action = "store", type = int, default = 0)
     parser.add_argument("--resume", action = "store_true", default = False)
+    parser.add_argument("--gpu_memory_utilization", action = "store", type = float, default = 0.9,
+                        help = "lower it to run several shards on one GPU")
     args = parser.parse_args()
 
 
@@ -309,7 +311,8 @@ if __name__ == "__main__":
     train_df = pd.read_parquet("math_data/train.parquet")
 
 
-    p = vLLMAutoregressiveSampler(model_name=model_str, model_type="chat", device=device)
+    p = vLLMAutoregressiveSampler(model_name=model_str, model_type="chat", device=device,
+                                  gpu_memory_utilization=args.gpu_memory_utilization)
 
     num_batches = args.num_batches
     all_idxs = [i for i in range(len(train_df))]
