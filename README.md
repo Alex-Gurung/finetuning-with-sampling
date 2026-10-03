@@ -49,6 +49,28 @@ sbatch --array=0-N eval_sci.sh
 ```
 The output .jsonl grading file stores correctness per evaluation task and can be directly parsed to obtain final accuracy. Similar commands for ```eval_math.sh``` and ```eval_ood_math.sh``` hold. For MMLU and GPQA, we refer to lm-evaluation-harness (https://github.com/eleutherai/lm-evaluation-harness).
 
+## Rejection-sampling fine-tuning with Groot (this fork)
 
+`groot.py` samples training solutions from a vLLM server and keeps the correct ones as SFT data. With
+`--method iid` it solves each training problem four times. With `--method groot` the model first writes a
+decision tree of approaches and four paths through it, then solves the problem once per path with the path as a
+hidden hint. A sample is kept when it is correct, finishes within 1,856 tokens and does not mention its hint.
+Prompts are in `groot_prompts/`.
 
+```bash
+vllm serve Qwen/Qwen2.5-7B-Instruct --generation-config vllm --data-parallel-size 8
+python groot.py --task chem --model Qwen/Qwen2.5-7B-Instruct --method groot --out data/qwen7b_groot
+torchrun --nproc_per_node 8 train_sft.py --data data/qwen7b_groot/sft.parquet \
+    --model Qwen/Qwen2.5-7B-Instruct --out checkpoints/qwen7b_groot
+```
 
+`train_sft.py` is full-parameter SFT with the settings of the verl run above: lr 5e-5, 2 epochs and batch 16
+by default, and `--lr`, `--epochs`, `--batch` for the paper's sweep. `sft_data.py` writes the SFT sets for the
+paper's baselines, from the expert traces or from the traces `boost_sci.py` and `boost_math.py` write.
+`likelihood.py` scores an SFT set under a model (the paper's Figure 3), and `passk.py` counts correct samples
+per chemistry test problem for pass@k (Figure 4).
+
+Changes to the original scripts: the eval scripts import the graders from `grader_utils` and define
+`format_prompt`; `grader_utils/math_normalize.py` is added from PRM800K. `boost_sci.py` and `boost_math.py`
+take `--gpu_memory_utilization` and `--max_model_len` so several shards can share a GPU, `boost_sci.py` takes
+`--resume`, and both have model options for Olmo-3-7B-Instruct and Qwen3-4B-Instruct-2507.
