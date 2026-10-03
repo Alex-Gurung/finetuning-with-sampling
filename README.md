@@ -54,8 +54,9 @@ The output .jsonl grading file stores correctness per evaluation task and can be
 `groot.py` samples training solutions from a vLLM server and keeps the correct ones as SFT data, for the chemistry
 or the math task (`--task chem` or `--task math`). With `--method iid` it solves each training problem four times.
 With `--method groot` the model first writes a decision tree of approaches and four paths through it, then solves the
-problem once per path with the path as a hidden hint. A sample is kept when it is correct, finishes within 1,856
-tokens and does not mention its hint. Prompts are in `groot_prompts/`.
+problem once per path with the path as a hidden hint. `--method vs` (verbalized sampling) asks for four approaches
+with their probabilities in place of the tree and solves once per approach the same way. A sample is kept when it is
+correct, finishes within 1,856 tokens and does not mention its hint. Prompts are in `groot_prompts/`.
 
 ```bash
 vllm serve Qwen/Qwen2.5-7B-Instruct --generation-config vllm --data-parallel-size 8

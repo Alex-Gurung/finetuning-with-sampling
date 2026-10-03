@@ -1,8 +1,10 @@
-"""Samples training solutions with Groot or IID from a vLLM server, grades them, and writes the
+"""Samples training solutions with Groot, VS or IID from a vLLM server, grades them, and writes the
 correct ones as SFT data, for the chemistry or the math task.
 
 Groot asks the model for a decision tree of approaches and n paths through it, then solves the
-problem once per path with the path as a hidden hint. IID solves the problem n times. Samples are
+problem once per path with the path as a hidden hint. VS (verbalized sampling) asks instead for n
+approaches with their probabilities, "randomly sampled from the full distribution", and solves once
+per approach the same way, with the probability line removed. IID solves the problem n times. Samples are
 graded with the repo's graders; correct, finished samples that do not mention their hint become
 the SFT set (prompt and response columns, as train_sft.py and the verl SFT trainer expect).
 
@@ -38,6 +40,7 @@ PROMPT_DIR = Path(__file__).parent / "groot_prompts"
 NUMBER_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
 PLACEHOLDER = re.compile(r"\{(PROBLEM|APPROACH|N|N_WORD|N_MINUS_1_WORD)\}")
 APPROACH_TAG = re.compile(r"<approach>(.*?)</approach>", re.DOTALL | re.IGNORECASE)
+PROBABILITY_LINE = re.compile(r"^\s*Probability\s*:\s*[0-9.]+\s*$", re.IGNORECASE | re.MULTILINE)
 PLANNER_TEMPERATURE = 0.45
 SOLVER_TEMPERATURE = 0.85
 PLANNER_MAX_TOKENS = 4096
@@ -134,9 +137,9 @@ async def sample_problem(args: argparse.Namespace, limit: asyncio.Semaphore, ind
     _, question, correct, kind = TASKS[args.task]
     prompt = question(row)
     plan, approaches = None, [None] * args.n
-    if args.method == "groot":
+    if args.method in ("groot", "vs"):
         planner = render(
-            f"{args.task}_planner",
+            f"{args.task}_{'planner' if args.method == 'groot' else 'vs_planner'}",
             PROBLEM=prompt,
             N=str(args.n),
             N_WORD=NUMBER_WORDS[args.n],
@@ -144,6 +147,8 @@ async def sample_problem(args: argparse.Namespace, limit: asyncio.Semaphore, ind
         )
         plan, _ = await ask(planner, PLANNER_TEMPERATURE, PLANNER_MAX_TOKENS)
         approaches = [block.strip() for block in APPROACH_TAG.findall(plan)][: args.n]
+        if args.method == "vs":
+            approaches = [PROBABILITY_LINE.sub("", a).strip() for a in approaches]
     solutions = await asyncio.gather(
         *(
             ask(
@@ -207,7 +212,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--task", choices=list(TASKS), required=True)
     parser.add_argument("--model", required=True, help="the model the vLLM server serves")
-    parser.add_argument("--method", choices=["groot", "iid"], default="groot")
+    parser.add_argument("--method", choices=["groot", "vs", "iid"], default="groot")
     parser.add_argument("--n", type=int, default=4, help="samples per problem")
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--url", default="http://localhost:8000/v1", help="the vLLM server")
