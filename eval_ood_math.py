@@ -16,6 +16,14 @@ from constants import *
 from grader_utils.math_parse_utils import parse_answer, parse_answer_from_tag
 from grader_utils.math_grader import grade_answer
 
+def format_prompt(text, model_type, tokenizer):
+    if model_type == "base":
+        format_str = text
+    elif model_type == "chat":
+        answer_context = [{"role": "user", "content": text}]
+        format_str = tokenizer.apply_chat_template(answer_context, tokenize=False, add_generation_prompt=True)
+    return format_str
+
 class vLLMAutoregressiveSampler:
     def __init__(self, model_name, model_type):
         self.llm = LLM(model=model_name, trust_remote_code=True, gpu_memory_utilization=0.9)
