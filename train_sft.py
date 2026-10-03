@@ -1,8 +1,9 @@
 """Full-parameter SFT on a prompt/response parquet with the paper's chemistry settings.
 
-lr 5e-5, 2 epochs, global batch 16, max length 2048, cosine schedule, gradient clipping at 1.0,
-and verl's SFT defaults for the rest (AdamW betas 0.9/0.95, weight decay 0.01, 10% warmup).
-The loss covers the response tokens only.
+lr 5e-5, 2 epochs, global batch 16, max length 2048, cosine schedule, gradient clipping at 1.0, and
+bf16 weights as in the paper's verl run (model_dtype=bf16). The rest follows verl's SFT defaults:
+AdamW betas 0.9/0.95, weight decay 0.01, 10% warmup. Plain data parallel, one model copy per GPU;
+the loss covers the response tokens only.
 
     torchrun --nproc_per_node 8 train_sft.py --data groot_qwen/sft.parquet \
         --model Qwen/Qwen2.5-7B-Instruct --out checkpoints/groot_qwen
@@ -12,11 +13,11 @@ import argparse
 import os
 
 import pandas as pd
+import torch
 from datasets import Dataset
 from trl import SFTConfig, SFTTrainer
 
 GLOBAL_BATCH = 16
-PER_DEVICE_BATCH = 2
 
 
 def main() -> None:
@@ -38,9 +39,9 @@ def main() -> None:
             for prompt, response in zip(rows["prompt"], rows["response"], strict=True)
         ]
     )
-    world_size = int(os.environ.get("WORLD_SIZE", "1"))
     config = SFTConfig(
         output_dir=args.out,
+        model_init_kwargs={"dtype": torch.bfloat16},
         num_train_epochs=2,
         learning_rate=5e-5,
         lr_scheduler_type="cosine",
@@ -48,24 +49,18 @@ def main() -> None:
         adam_beta2=0.95,
         weight_decay=0.01,
         max_grad_norm=1.0,
-        per_device_train_batch_size=PER_DEVICE_BATCH,
-        gradient_accumulation_steps=GLOBAL_BATCH // (PER_DEVICE_BATCH * world_size),
+        per_device_train_batch_size=1,
+        gradient_accumulation_steps=GLOBAL_BATCH // int(os.environ.get("WORLD_SIZE", "1")),
         max_length=2048,
-        bf16=True,
-        gradient_checkpointing=True,
-        fsdp="full_shard auto_wrap",
+        gradient_checkpointing_kwargs={"use_reentrant": False},
         save_strategy="no",
-        logging_steps=10,
         report_to="none",
     )
     trainer = SFTTrainer(model=args.model, args=config, train_dataset=dataset)
     trainer.train()
     # Olmo-3-7B-Instruct-SFT ships temperature and top_p without do_sample, which saving rejects.
     trainer.model.generation_config.do_sample = True
-    trainer.accelerator.state.fsdp_plugin.set_state_dict_type("FULL_STATE_DICT")
     trainer.save_model(args.out)
-    if trainer.accelerator.is_main_process:
-        trainer.processing_class.save_pretrained(args.out)
 
 
 if __name__ == "__main__":
