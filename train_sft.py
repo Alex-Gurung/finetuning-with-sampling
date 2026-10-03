@@ -60,6 +60,8 @@ def main() -> None:
     )
     trainer = SFTTrainer(model=args.model, args=config, train_dataset=dataset)
     trainer.train()
+    # Olmo-3-7B-Instruct-SFT ships temperature and top_p without do_sample, which saving rejects.
+    trainer.model.generation_config.do_sample = True
     trainer.accelerator.state.fsdp_plugin.set_state_dict_type("FULL_STATE_DICT")
     trainer.save_model(args.out)
     if trainer.accelerator.is_main_process:
