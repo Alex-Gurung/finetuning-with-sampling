@@ -4,7 +4,9 @@ correct ones as SFT data, for the chemistry or the math task.
 Groot asks the model for a decision tree of approaches and n paths through it, then solves the
 problem once per path with the path as a hidden hint. VS (verbalized sampling) asks instead for n
 approaches with their probabilities, "randomly sampled from the full distribution", and solves once
-per approach the same way, with the probability line removed. IID solves the problem n times. Samples are
+per approach the same way, with the probability line removed. ACG (approach-conditioned generation)
+has the model turn the training set's expert solution into one approach and solves n times with it
+as the hidden hint. IID solves the problem n times. Samples are
 graded with the repo's graders; correct, finished samples that do not mention their hint become
 the SFT set (prompt and response columns, as train_sft.py and the verl SFT trainer expect).
 
@@ -38,7 +40,7 @@ from grader_utils.sci_grader import grade_answer, parse_answer_gpqa, same_balanc
 
 PROMPT_DIR = Path(__file__).parent / "groot_prompts"
 NUMBER_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
-PLACEHOLDER = re.compile(r"\{(PROBLEM|APPROACH|N|N_WORD|N_MINUS_1_WORD)\}")
+PLACEHOLDER = re.compile(r"\{(PROBLEM|SOLUTION|APPROACH|N|N_WORD|N_MINUS_1_WORD)\}")
 APPROACH_TAG = re.compile(r"<approach>(.*?)</approach>", re.DOTALL | re.IGNORECASE)
 PROBABILITY_LINE = re.compile(r"^\s*Probability\s*:\s*[0-9.]+\s*$", re.IGNORECASE | re.MULTILINE)
 PLANNER_TEMPERATURE = 0.45
@@ -99,6 +101,7 @@ def math_correct(row: dict, response: str) -> bool:
     return bool(safe_grade(parse_answer(response), parse_answer(row["solution"])))
 
 
+EXPERT_FIELD = {"chem": "chosen", "math": "solution"}  # GPT-5's traces for chem, MATH's solutions for math
 # task -> (load training rows, build the question, grade a response, label a row's problem type)
 TASKS = {
     "chem": (chem_rows, chem_question, chem_correct, lambda row: row["details"]["task"]),
@@ -149,6 +152,10 @@ async def sample_problem(args: argparse.Namespace, limit: asyncio.Semaphore, ind
         approaches = [block.strip() for block in APPROACH_TAG.findall(plan)][: args.n]
         if args.method == "vs":
             approaches = [PROBABILITY_LINE.sub("", a).strip() for a in approaches]
+    elif args.method == "acg":
+        planner = render(f"{args.task}_acg_planner", PROBLEM=prompt, SOLUTION=row[EXPERT_FIELD[args.task]])
+        plan, _ = await ask(planner, PLANNER_TEMPERATURE, PLANNER_MAX_TOKENS)
+        approaches = [block.strip() for block in APPROACH_TAG.findall(plan)][:1] * args.n
     solutions = await asyncio.gather(
         *(
             ask(
@@ -212,7 +219,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--task", choices=list(TASKS), required=True)
     parser.add_argument("--model", required=True, help="the model the vLLM server serves")
-    parser.add_argument("--method", choices=["groot", "vs", "iid"], default="groot")
+    parser.add_argument("--method", choices=["groot", "vs", "acg", "iid"], default="groot")
     parser.add_argument("--n", type=int, default=4, help="samples per problem")
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--url", default="http://localhost:8000/v1", help="the vLLM server")

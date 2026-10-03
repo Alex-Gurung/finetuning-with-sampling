@@ -1,0 +1,15 @@
+You will be given a math problem and a worked solution to it.
+
+PROBLEM:
+{PROBLEM}
+
+SOLUTION:
+{SOLUTION}
+
+Describe the approach this solution takes, as a summary that a solver will use as the basis for solving the problem from scratch. Name the strategy and its one decisive insight; if the solution relies on a formula or rule, state only its conclusion, do not write out step-by-step computations; and otherwise leave the detailed working to the solver. Do not state the final answer or which option is correct. Fully self-contained prose that does not mention the solution or that the approach was taken from one.
+
+Format your entire response exactly as:
+
+<approach>
+(the approach summary)
+</approach>

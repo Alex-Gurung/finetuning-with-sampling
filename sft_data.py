@@ -13,9 +13,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from groot import TASKS
-
-EXPERT_FIELD = {"chem": "chosen", "math": "solution"}
+from groot import EXPERT_FIELD, TASKS
 
 if sys.argv[1] == "expert":
     task = sys.argv[2]
