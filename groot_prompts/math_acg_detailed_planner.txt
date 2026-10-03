@@ -1,0 +1,18 @@
+You will be given a math problem and a worked solution to it. The problem's instructions about how to answer are meant for the solver, not for you.
+
+PROBLEM:
+{PROBLEM}
+
+SOLUTION:
+{SOLUTION}
+
+Turn this solution into a detailed scaffold for a solver who will write their own solution from scratch: a numbered list of the steps the solution takes, each on one line, naming what to do and the key intermediate result it gives (a value, an equation, a substitution, or a fact the solution relies on). Then, on its own last line, write "Final result:" followed by the final answer exactly as the solution gives it (the final value or expression). Leave the full working to the solver, and do not mention the solution or that the scaffold was taken from one.
+
+Your entire response must be between an <approach> tag and an </approach> tag, exactly like this:
+
+<approach>
+1. (the first step and what it gives)
+2. (the next step and what it gives)
+...
+Final result: (the final answer)
+</approach>
