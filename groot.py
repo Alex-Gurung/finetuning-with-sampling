@@ -35,7 +35,7 @@ from grader_utils.math_parse_utils import parse_answer
 from grader_utils.sci_grader import grade_answer, parse_answer_gpqa, same_balanced_equation_olmo
 
 PROMPT_DIR = Path(__file__).parent / "groot_prompts"
-NUMBER_WORDS = "zero one two three four five six seven eight nine ten".split()
+NUMBER_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
 PLACEHOLDER = re.compile(r"\{(PROBLEM|APPROACH|N|N_WORD|N_MINUS_1_WORD)\}")
 APPROACH_TAG = re.compile(r"<approach>(.*?)</approach>", re.DOTALL | re.IGNORECASE)
 PLANNER_TEMPERATURE = 0.45
