@@ -6,10 +6,11 @@ PROBLEM:
 SOLUTION:
 {SOLUTION}
 
-Summarize the approach this solution takes, for a solver who will use it as the basis for writing their own solution from scratch: name the strategy and its decisive insight, give the key intermediate results, and state the final result the solution reaches. Write a short paragraph of prose, not a step-by-step working, that does not mention the solution or that the approach was taken from one.
+Summarize the approach this solution takes, for a solver who will use it as the basis for writing their own solution from scratch: name the strategy and its decisive insight and give the key intermediate results, in a short paragraph of prose (not a step-by-step working) that does not mention the solution or that the approach was taken from one. Then, on its own last line, write "Final result:" followed by the final answer exactly as the solution gives it (the final value or expression).
 
-Your entire response must be the summary between an <approach> tag and an </approach> tag, exactly like this:
+Your entire response must be between an <approach> tag and an </approach> tag, exactly like this:
 
 <approach>
 (the approach summary)
+Final result: (the final answer)
 </approach>
