@@ -42,8 +42,9 @@ def format_prompt(text, model_type, tokenizer):
     return format_str
 
 class vLLMAutoregressiveSampler:
-    def __init__(self, model_name, model_type, device="cuda", gpu_memory_utilization=0.9):
-        self.llm = LLM(model=model_name, trust_remote_code=True, gpu_memory_utilization=gpu_memory_utilization)
+    def __init__(self, model_name, model_type, device="cuda", gpu_memory_utilization=0.9, max_model_len=None):
+        self.llm = LLM(model=model_name, trust_remote_code=True, gpu_memory_utilization=gpu_memory_utilization,
+                       max_model_len=max_model_len)
         self.tokenizer = self.llm.get_tokenizer()
         self.model_type = model_type
         self.device = device
@@ -276,7 +277,7 @@ def safe_grade(ans, correct_ans):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--save_str", action = "store", type = str, default = "math_boost/",  dest = "save_str")
-    parser.add_argument("--model", action = "store", default = "qwen", type = str, choices = ["qwen", "qwen3-4b"])
+    parser.add_argument("--model", action = "store", default = "qwen", type = str, choices = ["qwen", "qwen3-4b-instruct"])
     parser.add_argument("--device", action = "store", type = str, dest = "device", default = "cuda" if torch.cuda.is_available() else 'cpu')
     parser.add_argument("--batch_idx", action = "store", type = int, default = 0)
     parser.add_argument("--num_batches", action = "store", type = int, default = 15)
@@ -287,6 +288,8 @@ if __name__ == "__main__":
     parser.add_argument("--resume", action = "store_true", default = False)
     parser.add_argument("--gpu_memory_utilization", action = "store", type = float, default = 0.9,
                         help = "lower it to run several shards on one GPU")
+    parser.add_argument("--max_model_len", action = "store", type = int, default = None,
+                        help = "cap the context, which a small memory share needs for long-context models")
     args = parser.parse_args()
 
 
@@ -305,14 +308,14 @@ if __name__ == "__main__":
 
     if model == "qwen":
         model_str = "Qwen/Qwen2.5-3B"
-    elif model == "qwen3-4b":
-        model_str = "Qwen/Qwen3-4B-Base"
+    elif model == "qwen3-4b-instruct":
+        model_str = "Qwen/Qwen3-4B-Instruct-2507"
 
     train_df = pd.read_parquet("math_data/train.parquet")
 
 
     p = vLLMAutoregressiveSampler(model_name=model_str, model_type="chat", device=device,
-                                  gpu_memory_utilization=args.gpu_memory_utilization)
+                                  gpu_memory_utilization=args.gpu_memory_utilization, max_model_len=args.max_model_len)
 
     num_batches = args.num_batches
     all_idxs = [i for i in range(len(train_df))]
