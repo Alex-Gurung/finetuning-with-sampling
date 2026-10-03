@@ -25,8 +25,8 @@ from vllm.v1.engine.async_llm import AsyncLLM
 from constants import SEQ_PROMPT_MATH, SEQ_PROMPT_SCI
 from eval_math import MATH_COT, MATH_PROMPT, safe_grade
 from grader_utils.math_parse_utils import parse_answer
-from groot import chem_question
 from grader_utils.sci_grader import grade_answer, parse_answer_gpqa, same_balanced_equation_olmo
+from groot import chem_question
 
 MAX_NEW_TOKENS = 1856
 
@@ -46,7 +46,7 @@ def math_record(row, response):
 
 # task -> (training rows, question, expert solution, proposal prompt, repetition penalty, blocks, answer and grade)
 TASKS = {
-    "chem": (lambda: [json.loads(line) for line in open("sci_data/train_data.jsonl") if line.strip()], chem_question,
+    "chem": (lambda: [json.loads(line) for line in Path("sci_data/train_data.jsonl").read_text().splitlines()], chem_question,
              lambda row: row["chosen"], SEQ_PROMPT_SCI, 1.05, 58, chem_record),
     "math": (lambda: pd.read_parquet("math_data/train.parquet").to_dict("records"),
              lambda row: MATH_PROMPT + row["problem"] + MATH_COT, lambda row: row["solution"], SEQ_PROMPT_MATH, 1.1, 32,
@@ -118,11 +118,11 @@ class Sampler:
 async def run(args):
     load, question_of, solution_of, prompt, repetition_penalty, block_num, grade = TASKS[args.task]
     rows = load()
-    todo = [int(line) for line in open(args.idx_file) if line.strip()]
+    todo = [int(line) for line in Path(args.idx_file).read_text().split()]
     args.out.mkdir(parents=True, exist_ok=True)
     out_path = args.out / f"boosted_{Path(args.idx_file).stem}.jsonl"
     if out_path.exists():
-        done = {json.loads(line)["idx"] for line in open(out_path)}
+        done = {json.loads(line)["idx"] for line in out_path.read_text().splitlines()}
         todo = [i for i in todo if i not in done]
     engine = AsyncLLM.from_engine_args(AsyncEngineArgs(model=args.model, trust_remote_code=True,
                                                        gpu_memory_utilization=0.9, max_model_len=16384))
