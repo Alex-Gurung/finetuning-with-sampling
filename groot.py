@@ -44,7 +44,7 @@ PLACEHOLDER = re.compile(r"\{(PROBLEM|SOLUTION|APPROACH|N|N_WORD|N_MINUS_1_WORD)
 APPROACH_TAG = re.compile(r"<approach>(.*?)</approach>", re.DOTALL | re.IGNORECASE)
 PROBABILITY_LINE = re.compile(r"^\s*Probability\s*:\s*[0-9.]+\s*$", re.IGNORECASE | re.MULTILINE)
 ANY_TAG = re.compile(r"<([a-z_-]+)>(.*?)</\1>", re.DOTALL | re.IGNORECASE)
-TAG_WORD = re.compile(r"^\s*approach\s*:?\s*\n", re.IGNORECASE)
+TAG_WORD = re.compile(r"^\s*[#*_ ]*approach\b[*_ ]*:?[*_ ]*\s*\n?", re.IGNORECASE)
 PLANNER_TEMPERATURE = 0.45
 SOLVER_TEMPERATURE = 0.85
 PLANNER_MAX_TOKENS = 4096
@@ -157,12 +157,15 @@ async def sample_problem(args: argparse.Namespace, limit: asyncio.Semaphore, ind
     elif args.method == "acg":
         planner = render(args.planner or f"{args.task}_acg_planner", PROBLEM=prompt, SOLUTION=row[EXPERT_FIELD[args.task]])
         plan, _ = await ask(planner, PLANNER_TEMPERATURE, PLANNER_MAX_TOKENS)
-        # One approach is asked for, so a block in other tags, or the text under a bare "approach" header (both seen
-        # from Olmo-3-7B-Instruct), is the approach too.
+        # One approach is asked for, so a block in other tags, or failing that the whole reply without an "approach"
+        # header, is the approach too (Olmo-3-7B-Instruct often leaves out or renames the tags).
         found = APPROACH_TAG.findall(plan) or [m[1] for m in ANY_TAG.findall(plan)]
-        if not found and TAG_WORD.match(plan) and len(plan) < 3000:
-            found = [TAG_WORD.sub("", plan)]
+        if not found and plan.strip() and len(plan) < 4000:  # the whole reply is the one approach asked for
+            found = [TAG_WORD.sub("", plan.strip(), count=1)]
         approaches = [found[0].strip()] * args.n if found else []
+    if plan is not None and not approaches:
+        with (args.out / "unparsed.jsonl").open("a") as out:  # kept so a format failure can be read later
+            out.write(json.dumps({"idx": index, "method": args.method, "plan": plan}) + "\n")
     solutions = await asyncio.gather(
         *(
             ask(
