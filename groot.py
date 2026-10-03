@@ -144,7 +144,7 @@ async def sample_problem(args: argparse.Namespace, limit: asyncio.Semaphore, ind
     plan, approaches = None, [None] * args.n
     if args.method in ("groot", "vs"):
         planner = render(
-            f"{args.task}_{'planner' if args.method == 'groot' else 'vs_planner'}",
+            args.planner or f"{args.task}_{'planner' if args.method == 'groot' else 'vs_planner'}",
             PROBLEM=prompt,
             N=str(args.n),
             N_WORD=NUMBER_WORDS[args.n],
@@ -155,7 +155,7 @@ async def sample_problem(args: argparse.Namespace, limit: asyncio.Semaphore, ind
         if args.method == "vs":
             approaches = [PROBABILITY_LINE.sub("", a).strip() for a in approaches]
     elif args.method == "acg":
-        planner = render(f"{args.task}_acg_planner", PROBLEM=prompt, SOLUTION=row[EXPERT_FIELD[args.task]])
+        planner = render(args.planner or f"{args.task}_acg_planner", PROBLEM=prompt, SOLUTION=row[EXPERT_FIELD[args.task]])
         plan, _ = await ask(planner, PLANNER_TEMPERATURE, PLANNER_MAX_TOKENS)
         # One approach is asked for, so a block in other tags, or the text under a bare "approach" header (both seen
         # from Olmo-3-7B-Instruct), is the approach too.
@@ -228,6 +228,7 @@ def main() -> None:
     parser.add_argument("--model", required=True, help="the model the vLLM server serves")
     parser.add_argument("--method", choices=["groot", "vs", "acg", "iid"], default="groot")
     parser.add_argument("--n", type=int, default=4, help="samples per problem")
+    parser.add_argument("--planner", help="planner prompt in groot_prompts/, without .txt (default: the method's own)")
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--url", default="http://localhost:8000/v1", help="the vLLM server")
     parser.add_argument("--workers", type=int, default=1024, help="requests in flight")
