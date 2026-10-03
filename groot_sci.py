@@ -6,8 +6,11 @@ problem once per path with the path as a hidden hint. IID solves the problem n t
 graded with the repo's graders; correct, finished samples that do not mention their hint become
 the SFT set (prompt and response columns, as train_sft.py and the verl SFT trainer expect).
 
-    vllm serve Qwen/Qwen2.5-7B-Instruct --max-model-len 32768 --data-parallel-size 8
+    vllm serve Qwen/Qwen2.5-7B-Instruct --generation-config vllm --data-parallel-size 8
     python groot_sci.py --model Qwen/Qwen2.5-7B-Instruct --method groot --out groot_qwen
+
+Without --generation-config vllm, the server fills in the sampling parameters a request leaves out
+from the model's generation_config.json (for Qwen2.5, top_k 20 and repetition penalty 1.05).
 """
 
 import argparse
