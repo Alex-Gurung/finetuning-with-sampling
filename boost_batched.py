@@ -135,6 +135,8 @@ async def run(args):
     )
     if args.repetition_penalty is not None:
         repetition_penalty = args.repetition_penalty
+    if args.block_num is not None:
+        block_num = args.block_num
     sampler = Sampler(engine, AutoTokenizer.from_pretrained(args.model), prompt, repetition_penalty)
     limit = asyncio.Semaphore(args.concurrency)
 
@@ -173,6 +175,9 @@ def main():
     parser.add_argument("--out", required=True, type=Path, help="directory for boosted_<idx file name>.jsonl")
     parser.add_argument("--repetition_penalty", type=float, default=None,
                         help="override the task's proposal repetition penalty (the paper's: 1.05 chem, 1.1 math)")
+    parser.add_argument("--block_num", type=int, default=None,
+                        help="override the task's number of blocks (the scripts' defaults: 58 of 32 tokens for chem, "
+                             "32 of 58 for math)")
     parser.add_argument("--seed", type=int, default=0, help="seed for the MCMC cut points")
     parser.add_argument("--mcmc_steps", type=int, default=10)
     parser.add_argument("--concurrency", type=int, default=128, help="problems sampled at once")
