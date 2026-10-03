@@ -100,6 +100,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch_idx", action = "store", type = int, default = 0)
     parser.add_argument("--num_batches", action = "store", type = int, default = 1)
     parser.add_argument("--seed", action = "store", type = int, default = 0)
+    parser.add_argument("--max_tokens", action = "store", type = int, default = 1856, help = "generation cap; the paper uses 1856")
     args = parser.parse_args()
 
     model_str = args.model_path
@@ -136,7 +137,7 @@ if __name__ == "__main__":
         format_str = format_prompt(question, p.model_type, p.tokenizer)
 
         sampling_params = SamplingParams(
-            max_tokens=1856,
+            max_tokens=args.max_tokens,
             temperature=0.6,
             stop_token_ids=[p.tokenizer.eos_token_id],
             logprobs=0 # We need logprobs of generated tokens

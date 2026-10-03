@@ -30,6 +30,7 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=5e-5)
     parser.add_argument("--epochs", type=int, default=2)
     parser.add_argument("--batch", type=int, default=16, help="global batch size")
+    parser.add_argument("--seed", type=int, default=42, help="data order (42 is TRL's default)")
     args = parser.parse_args()
 
     rows = pd.read_parquet(args.data)
@@ -55,6 +56,7 @@ def main() -> None:
         gradient_checkpointing_kwargs={"use_reentrant": False},
         save_strategy="no",
         report_to="none",
+        seed=args.seed,
     )
     trainer = SFTTrainer(model=args.model, args=config, train_dataset=dataset, processing_class=tokenizer)
     trainer.train()

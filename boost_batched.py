@@ -133,6 +133,8 @@ async def run(args):
     engine = AsyncLLM.from_engine_args(
         AsyncEngineArgs(model=args.model, trust_remote_code=True, gpu_memory_utilization=0.9, max_model_len=16384)
     )
+    if args.repetition_penalty is not None:
+        repetition_penalty = args.repetition_penalty
     sampler = Sampler(engine, AutoTokenizer.from_pretrained(args.model), prompt, repetition_penalty)
     limit = asyncio.Semaphore(args.concurrency)
 
@@ -140,7 +142,7 @@ async def run(args):
         async with limit:
             question, solution = question_of(rows[i]), solution_of(rows[i])
             start = time.time()
-            gen, target, lps = await sampler.project(question, solution, args.mcmc_steps, block_num, random.Random(i))
+            gen, target, lps = await sampler.project(question, solution, args.mcmc_steps, block_num, random.Random(i + 1_000_003 * args.seed))
             response = sampler.tokenizer.decode(gen, skip_special_tokens=True)
             answer, correct = grade(rows[i], response)
             return {
@@ -169,6 +171,9 @@ def main():
     parser.add_argument("--model", required=True)
     parser.add_argument("--idx_file", required=True, help="training indices to sample, one per line")
     parser.add_argument("--out", required=True, type=Path, help="directory for boosted_<idx file name>.jsonl")
+    parser.add_argument("--repetition_penalty", type=float, default=None,
+                        help="override the task's proposal repetition penalty (the paper's: 1.05 chem, 1.1 math)")
+    parser.add_argument("--seed", type=int, default=0, help="seed for the MCMC cut points")
     parser.add_argument("--mcmc_steps", type=int, default=10)
     parser.add_argument("--concurrency", type=int, default=128, help="problems sampled at once")
     asyncio.run(run(parser.parse_args()))
