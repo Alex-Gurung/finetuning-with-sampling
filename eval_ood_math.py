@@ -119,6 +119,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch_idx", action = "store", type = int, default = 0)
     parser.add_argument("--num_batches", action = "store", type = int, default = 1)
     parser.add_argument("--seed", action = "store", type = int, default = 0)
+    parser.add_argument("--model_type", action = "store", type = str, default = "chat", choices = ["base", "chat"])
     parser.add_argument("--dataset", action = "store", type = str, required=True, choices=["AMC", "GSM8K", "MATH-TTT"],
                         help="OOD evaluation dataset from ood_data/")
     args = parser.parse_args()
@@ -133,7 +134,7 @@ if __name__ == "__main__":
 
     test_set = load_ood_dataset(args.dataset)
 
-    p = vLLMAutoregressiveSampler(model_name=model_str, model_type="chat")
+    p = vLLMAutoregressiveSampler(model_name=model_str, model_type=args.model_type)
 
     chunk_size = (len(test_set) + args.num_batches - 1) // args.num_batches  # ceiling division
     start = args.batch_idx * chunk_size
@@ -147,7 +148,7 @@ if __name__ == "__main__":
         question = MATH_PROMPT + base_q + MATH_COT
 
         t0 = time.time()
-        format_str = p.tokenizer.apply_chat_template([{"role": "user", "content": question}], tokenize=False, add_generation_prompt=True)
+        format_str = format_prompt(question, p.model_type, p.tokenizer)
 
         sampling_params = SamplingParams(
             max_tokens=1856,

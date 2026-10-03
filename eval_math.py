@@ -112,7 +112,7 @@ if __name__ == "__main__":
     test_df = pd.read_parquet("math_data/test.parquet")
 
 
-    p = vLLMAutoregressiveSampler(model_name=model_str, model_type="chat")
+    p = vLLMAutoregressiveSampler(model_name=model_str, model_type=args.model_type)
 
     num_batches = args.num_batches
     all_idxs = [i for i in range(len(test_df))]
@@ -133,7 +133,7 @@ if __name__ == "__main__":
 
 
         t0 = time.time()
-        format_str = p.tokenizer.apply_chat_template([{"role": "user", "content": question}], tokenize=False, add_generation_prompt=True)
+        format_str = format_prompt(question, p.model_type, p.tokenizer)
 
         sampling_params = SamplingParams(
             max_tokens=1856,
