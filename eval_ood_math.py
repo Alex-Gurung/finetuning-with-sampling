@@ -13,8 +13,8 @@ from vllm.inputs import TokensPrompt
 
 from constants import *
 
-from math_parse_utils import parse_answer, parse_answer_from_tag
-from math_grader import grade_answer
+from grader_utils.math_parse_utils import parse_answer, parse_answer_from_tag
+from grader_utils.math_grader import grade_answer
 
 class vLLMAutoregressiveSampler:
     def __init__(self, model_name, model_type):

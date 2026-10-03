@@ -1,0 +1,42 @@
+You will be given a chemistry problem.
+
+PROBLEM:
+{PROBLEM}
+
+First, write out a decision tree for solving this problem inside <tree></tree> tags. Here is an example of the expected shape, written for a different, unrelated problem (find the pH of a buffer made from a weak acid and its conjugate base) - use the format but not the content of this example:
+
+A. Henderson-Hasselbalch on the stated amounts
+   A1. Which ratio to use
+       A1a. Base over acid concentrations as given
+       A1b. Moles after accounting for any added strong acid or base
+B. Full equilibrium for the weak acid
+   B1. Approximation
+       B1a. Assume the dissociation is small next to the initial amounts
+       B1b. Solve the quadratic exactly
+C. Charge balance over all species
+   C1. Which terms to keep
+       C1a. Drop the hydroxide term in acidic solution
+       C1b. Keep every term and solve numerically
+D. Bound the answer with the acid's pKa
+   D1. Check
+       D1a. Equal amounts give pH = pKa
+       D1b. A tenfold excess of one form shifts the pH by one unit
+
+The top-level entries of this tree should be fundamentally different strategies that seem like reasonable high-level approaches to solve this problem. Keep the tree high-level and compact, only briefly describing key decisions that meaningfully change results and are also reasonable alternatives. Obvious choices with no alternatives can be skipped over to keep the trees concise. Every root-to-leaf path should read as a coherent, distinct solution plan.
+
+Then pick the {N} root-to-leaf paths through the tree that best combine coverage of different strategies with likelihood of success. The {N} paths do not need to share any part of the tree - {N_WORD} approaches from {N_WORD} entirely different subtrees, with no overlap at all, are valid and often ideal. Immediately before each <approach> block, on its own line outside the tags, write the path it takes in the style "Path: B -> B1a". Inside the tags give the full approach summary itself: name the strategy and its one decisive insight; if the path relies on a formula or rule, check it briefly and state only its conclusion, do not write out step-by-step computations; and otherwise leave the detailed working to the solver. Do not state the final answer or which option is correct. Fully self-contained prose that does not mention the tree, the labels, or the other approaches.
+
+Format your entire response exactly as:
+
+<tree>
+(the tree)
+</tree>
+
+Path: ...
+<approach>
+(the approach summary)
+</approach>
+
+({N_MINUS_1_WORD} more <approach> blocks, {N} in total - no other text before, between, or after)
+
+Do all of your thinking inside the tree and the approach blocks - if you are unsure, commit to your best guess rather than reasoning outside them.
