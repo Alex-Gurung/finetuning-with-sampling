@@ -108,9 +108,7 @@ def render(template: str, **fields: str) -> str:
     return PLACEHOLDER.sub(lambda match: fields[match.group(1)], text)
 
 
-def chat(
-    args: argparse.Namespace, message: str, temperature: float, max_tokens: int
-) -> tuple[str, str]:
+def chat(args: argparse.Namespace, message: str, temperature: float, max_tokens: int) -> tuple[str, str]:
     body = {
         "model": args.model,
         "messages": [{"role": "user", "content": message}],
@@ -128,9 +126,7 @@ def chat(
     return choice["message"]["content"], choice["finish_reason"]
 
 
-async def sample_problem(
-    args: argparse.Namespace, limit: asyncio.Semaphore, index: int, row: dict
-) -> list[dict]:
+async def sample_problem(args: argparse.Namespace, limit: asyncio.Semaphore, index: int, row: dict) -> list[dict]:
     async def ask(message: str, temperature: float, max_tokens: int) -> tuple[str, str]:
         async with limit:
             return await asyncio.to_thread(chat, args, message, temperature, max_tokens)
@@ -197,9 +193,8 @@ async def run(args: argparse.Namespace) -> None:
     with samples_path.open() as lines:
         samples = [json.loads(line) for line in lines]
     keep = [s for s in samples if s["correct"] and not s["leaked"] and s["finish_reason"] == "stop"]
-    pd.DataFrame(
-        {"prompt": [s["prompt"] for s in keep], "response": [s["response"] for s in keep]}
-    ).to_parquet(args.out / "sft.parquet")
+    sft = pd.DataFrame({"prompt": [s["prompt"] for s in keep], "response": [s["response"] for s in keep]})
+    sft.to_parquet(args.out / "sft.parquet")
     solved = len({s["idx"] for s in keep})
     print(
         f"{len(samples)} samples, {sum(s['correct'] for s in samples)} correct, "
@@ -209,9 +204,7 @@ async def run(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--task", choices=list(TASKS), required=True)
     parser.add_argument("--model", required=True, help="the model the vLLM server serves")
     parser.add_argument("--method", choices=["groot", "iid"], default="groot")

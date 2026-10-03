@@ -51,11 +51,11 @@ The output .jsonl grading file stores correctness per evaluation task and can be
 
 ## Rejection-sampling fine-tuning with Groot (this fork)
 
-`groot.py` samples training solutions from a vLLM server and keeps the correct ones as SFT data. With
-`--method iid` it solves each training problem four times. With `--method groot` the model first writes a
-decision tree of approaches and four paths through it, then solves the problem once per path with the path as a
-hidden hint. A sample is kept when it is correct, finishes within 1,856 tokens and does not mention its hint.
-Prompts are in `groot_prompts/`.
+`groot.py` samples training solutions from a vLLM server and keeps the correct ones as SFT data, for the chemistry
+or the math task (`--task chem` or `--task math`). With `--method iid` it solves each training problem four times.
+With `--method groot` the model first writes a decision tree of approaches and four paths through it, then solves the
+problem once per path with the path as a hidden hint. A sample is kept when it is correct, finishes within 1,856
+tokens and does not mention its hint. Prompts are in `groot_prompts/`.
 
 ```bash
 vllm serve Qwen/Qwen2.5-7B-Instruct --generation-config vllm --data-parallel-size 8
@@ -65,12 +65,15 @@ torchrun --nproc_per_node 8 train_sft.py --data data/qwen7b_groot/sft.parquet \
 ```
 
 `train_sft.py` is full-parameter SFT with the settings of the verl run above: lr 5e-5, 2 epochs and batch 16
-by default, and `--lr`, `--epochs`, `--batch` for the paper's sweep. `sft_data.py` writes the SFT sets for the
-paper's baselines, from the expert traces or from the traces `boost_sci.py` and `boost_math.py` write.
-`likelihood.py` scores an SFT set under a model (the paper's Figure 3), and `passk.py` counts correct samples
-per chemistry test problem for pass@k (Figure 4).
+by default, and `--lr`, `--epochs`, `--batch` for the paper's sweep. `boost_batched.py` is the paper's projection
+sampling run on many problems at once, with the same algorithm. `sft_data.py` writes the SFT sets for the paper's
+baselines: `expert` from the training set's expert traces, `boosted` from the traces that `boost_sci.py`,
+`boost_math.py` or `boost_batched.py` write (one per problem, correct or not), and `correct` from the same traces,
+keeping only those that reach the right answer. `likelihood.py` scores an SFT set under a model (the paper's
+Figure 3), and `passk.py` counts correct samples per chemistry test problem for pass@k (Figure 4).
 
 Changes to the original scripts: the eval scripts import the graders from `grader_utils` and define
-`format_prompt`; `grader_utils/math_normalize.py` is added from PRM800K. `boost_sci.py` and `boost_math.py`
-take `--gpu_memory_utilization` and `--max_model_len` so several shards can share a GPU, `boost_sci.py` takes
-`--resume`, and both have model options for Olmo-3-7B-Instruct and Qwen3-4B-Instruct-2507.
+`format_prompt`, and the math evals honour `--model_type`; `grader_utils/math_normalize.py` is added from PRM800K.
+`boost_sci.py` and `boost_math.py` take `--gpu_memory_utilization` and `--max_model_len` so several shards can
+share a GPU, and `--idx_file` to process a list of training problems. `boost_sci.py` also takes `--resume` and an
+Olmo-3-7B-Instruct option, and `boost_math.py` a Qwen3-4B-Instruct-2507 option.

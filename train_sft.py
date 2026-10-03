@@ -23,9 +23,7 @@ from trl import SFTConfig, SFTTrainer
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--data", required=True)
     parser.add_argument("--model", required=True)
     parser.add_argument("--out", required=True)
@@ -37,9 +35,7 @@ def main() -> None:
     rows = pd.read_parquet(args.data)
     tokenizer = AutoTokenizer.from_pretrained(args.model)
     prompts = [
-        tokenizer.apply_chat_template(
-            [{"role": "user", "content": prompt}], tokenize=False, add_generation_prompt=True
-        )
+        tokenizer.apply_chat_template([{"role": "user", "content": prompt}], tokenize=False, add_generation_prompt=True)
         for prompt in rows["prompt"]
     ]
     dataset = Dataset.from_dict({"prompt": prompts, "completion": list(rows["response"])})
@@ -60,9 +56,7 @@ def main() -> None:
         save_strategy="no",
         report_to="none",
     )
-    trainer = SFTTrainer(
-        model=args.model, args=config, train_dataset=dataset, processing_class=tokenizer
-    )
+    trainer = SFTTrainer(model=args.model, args=config, train_dataset=dataset, processing_class=tokenizer)
     trainer.train()
     # Olmo-3-7B-Instruct-SFT ships temperature and top_p without do_sample, which saving rejects.
     trainer.model.generation_config.do_sample = True

@@ -36,9 +36,7 @@ def main() -> None:
         )
         for i in indices
     ]
-    params = SamplingParams(
-        n=args.n, temperature=0.6, max_tokens=1856, stop_token_ids=[tokenizer.eos_token_id], seed=0
-    )
+    params = SamplingParams(n=args.n, temperature=0.6, max_tokens=1856, stop_token_ids=[tokenizer.eos_token_id], seed=0)
     outputs = llm.generate(prompts, params)
     with open(args.out, "w") as out:
         for i, output in zip(indices, outputs, strict=True):

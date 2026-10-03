@@ -16,22 +16,22 @@ import time
 import uuid
 from pathlib import Path
 
-import pandas as pd
 from transformers import AutoTokenizer
 from vllm import AsyncEngineArgs, SamplingParams
 from vllm.inputs import TokensPrompt
 from vllm.v1.engine.async_llm import AsyncLLM
 
 from constants import SEQ_PROMPT_MATH, SEQ_PROMPT_SCI
-from eval_math import MATH_COT, MATH_PROMPT, safe_grade
+from eval_math import safe_grade
 from grader_utils.math_parse_utils import parse_answer
 from grader_utils.sci_grader import grade_answer, parse_answer_gpqa, same_balanced_equation_olmo
-from groot import chem_question
+from groot import chem_question, chem_rows, math_question, math_rows
 
 MAX_NEW_TOKENS = 1856
 
 
-def chem_record(row, response):
+def chem_grade(row, response):
+    """The answer and its correctness, as boost_sci.py records them."""
     if row["type"].startswith("mcq"):
         answer = parse_answer_gpqa(response)
         return answer, int(grade_answer(answer, row["answerKey"]))
@@ -39,18 +39,16 @@ def chem_record(row, response):
     return out["equation_1"], out["same"]
 
 
-def math_record(row, response):
+def math_grade(row, response):
+    """The answer and its correctness, as boost_math.py records them."""
     answer = parse_answer(response)
     return answer, safe_grade(answer, parse_answer(row["solution"]))
 
 
 # task -> (training rows, question, expert solution, proposal prompt, repetition penalty, blocks, answer and grade)
 TASKS = {
-    "chem": (lambda: [json.loads(line) for line in Path("sci_data/train_data.jsonl").read_text().splitlines()], chem_question,
-             lambda row: row["chosen"], SEQ_PROMPT_SCI, 1.05, 58, chem_record),
-    "math": (lambda: pd.read_parquet("math_data/train.parquet").to_dict("records"),
-             lambda row: MATH_PROMPT + row["problem"] + MATH_COT, lambda row: row["solution"], SEQ_PROMPT_MATH, 1.1, 32,
-             math_record),
+    "chem": (chem_rows, chem_question, lambda row: row["chosen"], SEQ_PROMPT_SCI, 1.05, 58, chem_grade),
+    "math": (math_rows, math_question, lambda row: row["solution"], SEQ_PROMPT_MATH, 1.1, 32, math_grade),
 }
 
 
@@ -60,8 +58,9 @@ class Sampler:
         self.prompt, self.repetition_penalty = prompt, repetition_penalty
 
     def chat(self, text):
-        return self.tokenizer.apply_chat_template([{"role": "user", "content": text}], tokenize=False,
-                                                  add_generation_prompt=True)
+        return self.tokenizer.apply_chat_template(
+            [{"role": "user", "content": text}], tokenize=False, add_generation_prompt=True
+        )
 
     async def generate(self, ids, params):
         async for output in self.engine.generate(TokensPrompt(prompt_token_ids=ids), params, str(uuid.uuid4())):
@@ -71,9 +70,16 @@ class Sampler:
     async def propose(self, question, solution, current, ext_len):
         """proposal_vLLM: continue `current` from the expert-conditioned prompt."""
         response = self.tokenizer.decode(current, skip_special_tokens=True)
-        context = self.tokenizer.encode(self.chat(self.prompt.format(PROBLEM=question, SOLUTION=solution, RESPONSE=response)))
-        params = SamplingParams(max_tokens=ext_len, temperature=0.6, stop_token_ids=[self.tokenizer.eos_token_id],
-                                repetition_penalty=self.repetition_penalty, logprobs=0)
+        context = self.tokenizer.encode(
+            self.chat(self.prompt.format(PROBLEM=question, SOLUTION=solution, RESPONSE=response))
+        )
+        params = SamplingParams(
+            max_tokens=ext_len,
+            temperature=0.6,
+            stop_token_ids=[self.tokenizer.eos_token_id],
+            repetition_penalty=self.repetition_penalty,
+            logprobs=0,
+        )
         out = (await self.generate(context + current, params)).outputs[0]
         new = list(out.token_ids)
         return current + new, [out.logprobs[i][token].logprob for i, token in enumerate(new)]
@@ -82,7 +88,7 @@ class Sampler:
         """get_logprobs_vLLM: mean log-probability of `current` under the plain question."""
         context = self.tokenizer.encode(self.chat(question))
         out = await self.generate(context + current, SamplingParams(max_tokens=1, prompt_logprobs=0))
-        logprobs = [d[current[i]].logprob for i, d in enumerate(out.prompt_logprobs[len(context):]) if d]
+        logprobs = [d[current[i]].logprob for i, d in enumerate(out.prompt_logprobs[len(context) :]) if d]
         return sum(logprobs) / len(logprobs) if logprobs else float("-inf")
 
     async def project(self, question, solution, mcmc_steps, block_num, rng):
@@ -124,8 +130,9 @@ async def run(args):
     if out_path.exists():
         done = {json.loads(line)["idx"] for line in out_path.read_text().splitlines()}
         todo = [i for i in todo if i not in done]
-    engine = AsyncLLM.from_engine_args(AsyncEngineArgs(model=args.model, trust_remote_code=True,
-                                                       gpu_memory_utilization=0.9, max_model_len=16384))
+    engine = AsyncLLM.from_engine_args(
+        AsyncEngineArgs(model=args.model, trust_remote_code=True, gpu_memory_utilization=0.9, max_model_len=16384)
+    )
     sampler = Sampler(engine, AutoTokenizer.from_pretrained(args.model), prompt, repetition_penalty)
     limit = asyncio.Semaphore(args.concurrency)
 
@@ -136,9 +143,18 @@ async def run(args):
             gen, target, lps = await sampler.project(question, solution, args.mcmc_steps, block_num, random.Random(i))
             response = sampler.tokenizer.decode(gen, skip_special_tokens=True)
             answer, correct = grade(rows[i], response)
-            return {"idx": i, "prompt": question, "solution": solution, "gen": response, "target_log_prob_cur": target,
-                    "token_logprobs": lps, "runtime_sec": time.time() - start, "answer": answer, "is_correct": correct,
-                    "batched": True}
+            return {
+                "idx": i,
+                "prompt": question,
+                "solution": solution,
+                "gen": response,
+                "target_log_prob_cur": target,
+                "token_logprobs": lps,
+                "runtime_sec": time.time() - start,
+                "answer": answer,
+                "is_correct": correct,
+                "batched": True,
+            }
 
     with out_path.open("a") as out:
         for finished in asyncio.as_completed([one(i) for i in todo]):

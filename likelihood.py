@@ -1,7 +1,8 @@
 """Mean token log-probability of each SFT example's response under a model: how on-policy a training set is
 (the paper's Figure 3). The prompt is chat-templated as in training; the score averages over response tokens.
 
-    python likelihood.py --model Qwen/Qwen2.5-7B-Instruct --data groot_qwen/sft.parquet --out groot_qwen/likelihood.jsonl
+    python likelihood.py --model Qwen/Qwen2.5-7B-Instruct --data groot_qwen/sft.parquet \
+        --out groot_qwen/likelihood.jsonl
 """
 
 import argparse

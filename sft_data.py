@@ -1,10 +1,10 @@
 """Writes the SFT parquet (prompt and response columns) for a baseline.
 
-    python sft_data.py expert TASK OUT.parquet        the training set's expert traces: GPT-5's for chem, MATH's for math
-    python sft_data.py boosted BOOST_DIR OUT.parquet  the traces boost_math.py or boost_sci.py wrote, one per problem
+    python sft_data.py expert TASK OUT.parquet        the expert traces: GPT-5's for chem, MATH's for math
+    python sft_data.py boosted BOOST_DIR OUT.parquet  the traces boost_sci.py, boost_math.py or boost_batched.py wrote
     python sft_data.py correct BOOST_DIR OUT.parquet  the same, keeping only traces that reach the right answer
 
-`boosted` keeps every trace whether or not it is correct, as in the README's recipe.
+`boosted` keeps one trace per problem whether or not it is correct, as in the README's recipe.
 """
 
 import json
